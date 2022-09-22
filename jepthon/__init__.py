@@ -1,79 +1,91 @@
-import time
-
-import heroku3
-
+import sys
+import jepthon
+from jepthon import BOTLOG_CHATID, HEROKU_APP, PM_LOGGER_GROUP_ID
 from .Config import Config
 from .core.logger import logging
 from .core.session import jepiq
-from .sql_helper.globals import addgvar, delgvar, gvarstatus
+from .utils import (
+    add_bot_to_logger_group,
+    install_externalrepo,
+    ipchange,
+    load_plugins,
+    setup_bot,
+    mybot,
+    startupmessage,
+    verifyLoggerGroup,
+    saves,
+)
 
-__version__ = "1.0.0"
-__license__ = "كـتابة وتـعديل فريـق جيبثون"
-__author__ = "جيبثون <https://T.ME/Jepthon>"
-__copyright__ = "JEPTHON TEAM (C) 2020 - 2021  " + __author__
-
-jepiq.version = __version__
-jepiq.tgbot.version = __version__
 LOGS = logging.getLogger("jepthon")
-bot = jepiq
 
-StartTime = time.time()
-JEPVERSION = "3.1.3"
+print(jepthon.__copyright__)
+print("Licensed under the terms of the " + jepthon.__license__)
 
+cmdhr = Config.COMMAND_HAND_LER
 
-if Config.UPSTREAM_REPO == "jepthoniq":
-    UPSTREAM_REPO_URL = "https://github.com/jepthoniq/jepthon"
-else:
-    UPSTREAM_REPO_URL = Config.UPSTREAM_REPO
-
-if Config.PRIVATE_GROUP_BOT_API_ID == 0:
-    if gvarstatus("PRIVATE_GROUP_BOT_API_ID") is None:
-        Config.BOTLOG = False
-        Config.BOTLOG_CHATID = "me"
-    else:
-        Config.BOTLOG_CHATID = int(gvarstatus("PRIVATE_GROUP_BOT_API_ID"))
-        Config.PRIVATE_GROUP_BOT_API_ID = int(gvarstatus("PRIVATE_GROUP_BOT_API_ID"))
-        Config.BOTLOG = True
-else:
-    if str(Config.PRIVATE_GROUP_BOT_API_ID)[0] != "-":
-        Config.BOTLOG_CHATID = int("-" + str(Config.PRIVATE_GROUP_BOT_API_ID))
-    else:
-        Config.BOTLOG_CHATID = Config.PRIVATE_GROUP_BOT_API_ID
-    Config.BOTLOG = True
-
-if Config.PM_LOGGER_GROUP_ID == 0:
-    if gvarstatus("PM_LOGGER_GROUP_ID") is None:
-        Config.PM_LOGGER_GROUP_ID = -100
-    else:
-        Config.PM_LOGGER_GROUP_ID = int(gvarstatus("PM_LOGGER_GROUP_ID"))
-elif str(Config.PM_LOGGER_GROUP_ID)[0] != "-":
-    Config.PM_LOGGER_GROUP_ID = int("-" + str(Config.PM_LOGGER_GROUP_ID))
 try:
-    if Config.HEROKU_API_KEY is not None or Config.HEROKU_APP_NAME is not None:
-        HEROKU_APP = heroku3.from_key(Config.HEROKU_API_KEY).apps()[
-            Config.HEROKU_APP_NAME
-        ]
-    else:
-        HEROKU_APP = None
-except Exception:
-    HEROKU_APP = None
+    LOGS.info("جارِ بدء بوت جيبثون ✓")
+    jepiq.loop.run_until_complete(setup_bot())
+    LOGS.info("تم اكتمال تنصيب البوت ✓")
+except Exception as e:
+    LOGS.error(f"{str(e)}")
+    sys.exit()
+
+try:
+    LOGS.info("يتم تفعيل وضع الانلاين")
+    jepiq.loop.run_until_complete(mybot())
+    LOGS.info("تم تفعيل وضع الانلاين بنجاح ✓")
+except Exception as jep:
+    LOGS.error(f"- {jep}")
+    sys.exit()    
 
 
-# Global Configiables
-COUNT_MSG = 0
-USERS = {}
-COUNT_PM = {}
-LASTMSG = {}
-CMD_HELP = {}
-ISAFK = False
-AFKREASON = None
-CMD_LIST = {}
-SUDO_LIST = {}
-# for later purposes
-INT_PLUG = ""
-LOAD_PLUG = {}
+class CatCheck:
+    def __init__(self):
+        self.sucess = True
 
-# Variables
-BOTLOG = Config.BOTLOG
-BOTLOG_CHATID = Config.BOTLOG_CHATID
-PM_LOGGER_GROUP_ID = Config.PM_LOGGER_GROUP_ID
+
+Catcheck = CatCheck()
+
+
+async def startup_process():
+    check = await ipchange()
+    if check is not None:
+        Catcheck.sucess = False
+        return
+    await verifyLoggerGroup()
+    await load_plugins("plugins")
+    await load_plugins("assistant")
+    print("➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖")
+    print("⌯︙بـوت كريستين يعـمل بـنجاح ")
+    print(
+        f"تم تشغيل الانلاين تلقائياً ارسل {cmdhr}فحص لـرؤيـة اذا كـان البوت شـغال\
+        \nللمسـاعدة تواصـل  https://t.me/cr_source"
+    )
+    print("➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖➖")
+    await verifyLoggerGroup()
+    await saves()
+    await add_bot_to_logger_group(BOTLOG_CHATID)
+    if PM_LOGGER_GROUP_ID != -100:
+        await add_bot_to_logger_group(PM_LOGGER_GROUP_ID)
+    await startupmessage()
+    Catcheck.sucess = True
+    return
+
+async def externalrepo():
+    if Config.VCMODE:
+        await install_externalrepo("https://github.com/xlucifer711/jepthon")
+
+jepiq.loop.run_until_complete(externalrepo())
+jepiq.loop.run_until_complete(startup_process())
+
+if len(sys.argv) not in (1, 3, 4):
+    jepiq.disconnect()
+elif not Catcheck.sucess:
+    if HEROKU_APP is not None:
+        HEROKU_APP.restart()
+else:
+    try:
+        jepiq.run_until_disconnected()
+    except ConnectionError:
+        pass
