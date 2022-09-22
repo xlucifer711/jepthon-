@@ -16,7 +16,7 @@ else:
     session = "Jepthon"
 
 try:
-    jepthon = CatUserBotClient(
+    jepiq = CatUserBotClient(
         session=session,
         api_id=Config.APP_ID,
         api_hash=Config.API_HASH,
@@ -31,7 +31,7 @@ except Exception as e:
     sys.exit()
 
 
-jepthon.tgbot = tgbot = CatUserBotClient(
+jepiq.tgbot = tgbot = CatUserBotClient(
     session="arTgbot",
     api_id=Config.APP_ID,
     api_hash=Config.API_HASH,
